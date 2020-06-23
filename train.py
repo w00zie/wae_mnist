@@ -126,7 +126,7 @@ class Train:
         return c + self.lmbda*penalty
 
     @tf.function
-    def train_discriminator(self, batch: tf.Tensor):
+    def train_discriminator(self, batch: tf.Tensor) -> tf.Tensor:
         with tf.GradientTape() as tape:
             disc_loss = self.alternative_disc_loss(batch)
         disc_grads = tape.gradient(disc_loss, self.discriminator.trainable_variables)
@@ -143,27 +143,6 @@ class Train:
         self.dec_optim.apply_gradients(zip(dec_grads, self.decoder.trainable_variables))
         return enc_dec_loss
 
-    @tf.function(experimental_relax_shapes=True)
-    def calc_metrics(self, step: int):
-        z = tf.random.normal(shape=(self.batch_size, self.z_dim),
-                             mean=0., 
-                             stddev=tf.sqrt(self.sigma_z))
-        x_hat = self.decoder(z, training=False)
-        empty_bars = empty_bar_rate(x_hat)
-        pitch_used = n_pitches_used(x_hat)
-        tf.summary.scalar("Metrics/Empty Bars/Bass", empty_bars[0], step=step)
-        tf.summary.scalar("Metrics/Empty Bars/Drums", empty_bars[1], step=step)
-        tf.summary.scalar("Metrics/Empty Bars/Guitar", empty_bars[3], 
-                          step=step)
-        tf.summary.scalar("Metrics/Empty Bars/Piano", empty_bars[4], step=step)
-        tf.summary.scalar("Metrics/Empty Bars/Strings", empty_bars[4], 
-                          step=step)
-        tf.summary.scalar("Metrics/Pitch/Bass", pitch_used[0], step=step)
-        tf.summary.scalar("Metrics/Pitch/Drums", pitch_used[1], step=step)
-        tf.summary.scalar("Metrics/Pitch/Guitar", pitch_used[2], step=step)
-        tf.summary.scalar("Metrics/Pitch/Piano", pitch_used[3], step=step)
-        tf.summary.scalar("Metrics/Pitch/Strings", pitch_used[4], step=step)
-
     def log_hist(self, step):
         for w in self.encoder.trainable_weights:
             tf.summary.histogram("Encoder/{}".format(w.name), w, step=step)
@@ -173,17 +152,23 @@ class Train:
             tf.summary.histogram("Discriminator/{}".format(w.name), w, step=step)
 
     def display_random_bar(self, epoch):
-        z = tf.random.normal(shape=(3, self.z_dim),
+        z = tf.random.normal(shape=(8, self.z_dim),
                               mean=0., 
                               stddev=tf.sqrt(self.sigma_z))
         x_hat = self.decoder(z, training=False)
         tf.summary.image("Random", x_hat, step=epoch)
+        img = tf.squeeze(tf.concat([x_hat[i,:,:,:] for i in range(8)], axis=0), axis=-1)
+        plt.imsave(self.logdir+"/img/random_{}".format(epoch), img)
     
     def display_reconstruction(self, epoch):
         for batch in self.test_dataset.take(1):
             x_hat = self.decoder(self.encoder(batch, training=False), training=False)
             tf.summary.image("Reconstructed", x_hat, step=epoch)
             tf.summary.image("Real", batch, step=epoch)
+            reals = tf.squeeze(tf.concat([batch[i,:,:,:] for i in range(8)], axis=0), axis=-1)
+            fakes = tf.squeeze(tf.concat([x_hat[i,:,:,:] for i in range(8)], axis=0), axis=-1)
+            img = tf.concat([reals, fakes], axis=1)
+            plt.imsave(self.logdir+"/img/recon_{}".format(epoch), img)
 
     @tf.function
     def calc_discriminator_latent(self):
@@ -253,7 +238,6 @@ class Train:
                 d_g_z, test_loss, mse = self.validation_step()
                 # Calculate D(z)
                 d_z = self.calc_discriminator_latent()
-
                 # Logging
                 tf.summary.scalar("Train/Discriminator Loss", 
                                   d_loss, step=epoch)
