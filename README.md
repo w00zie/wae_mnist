@@ -15,7 +15,7 @@ These are a few samples decoded from the latent space. The quality of the genera
 Even rows contain original samples while odd rows their relative reconstruction.
 
 <p align="center">
-  <img src="[/wae_mnist/saved_models/23_06_2020-09:11:19/img/recons.png](https://github.com/w00zie/wae_mnist/blob/master/saved_models/23_06_2020-09:11:19/img/recons.png" />
+  <img src="https://github.com/w00zie/wae_mnist/blob/master/saved_models/23_06_2020-09:11:19/img/recons.png" />
 </p>
 
 ## Downloading & running
