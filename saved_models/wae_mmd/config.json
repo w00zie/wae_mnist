@@ -1,0 +1,1 @@
+{"h_dim": 32, "z_dim": 10, "epochs": 51, "conv_kernel_size": [5, 5], "sigma_z": 1.0, "encoder/decoder learning rate": 0.001, "exp_dir": "runs/06_07_2020-15:21:54", "lambda": 10.0}
