@@ -1,15 +1,15 @@
 import tensorflow as tf
 
 class Encoder(tf.keras.Model):
-    def __init__(self, 
-                 h_dim=32, 
-                 z_dim=20,
-                 kernel_size=(6,6),
-                 kernel_init = "TruncatedNormal",
-                 name="encoder",
-                 **kwargs):
+    def __init__(self, config, name="encoder", **kwargs):
 
         super(Encoder, self).__init__(name=name, **kwargs)
+        
+        h_dim = config["h_dim"]
+        z_dim = config["z_dim"]
+        kernel_size = config["conv_kernel_size"]
+        kernel_init = config["kernel_init"]
+        
         self.encoder = tf.keras.Sequential(
             [   
                 tf.keras.layers.InputLayer(input_shape=(28, 28, 1)),
@@ -60,15 +60,15 @@ class Encoder(tf.keras.Model):
 
 
 class Decoder(tf.keras.Model):
-    def __init__(self, 
-                 h_dim=32, 
-                 z_dim=20,
-                 kernel_size=(6,6),
-                 kernel_init = "TruncatedNormal",
-                 name="decoder",
-                 **kwargs):
+    def __init__(self, config, name="decoder", **kwargs):
 
         super(Decoder, self).__init__(name=name, **kwargs)
+
+        h_dim = config["h_dim"]
+        z_dim = config["z_dim"]
+        kernel_size = config["conv_kernel_size"]
+        kernel_init = config["kernel_init"]
+
         self.decoder = tf.keras.Sequential(
             [
                 tf.keras.layers.InputLayer(input_shape=(z_dim,)),
@@ -109,6 +109,45 @@ class Decoder(tf.keras.Model):
     def call(self, inputs: tf.Tensor) -> tf.Tensor:
         return self.decoder(inputs)
 
+class Discriminator(tf.keras.Model):
+    def __init__(self, config, name="discriminator", **kwargs):
+
+        super(Discriminator, self).__init__(name=name, **kwargs)
+
+        units = config["disc_units"]
+        z_dim = config["z_dim"]
+        kernel_init = config["kernel_init"]
+
+        self.discriminator = tf.keras.Sequential(
+            [
+                tf.keras.layers.InputLayer(input_shape=(z_dim,)),
+                tf.keras.layers.Dense(units=units, 
+                                      kernel_initializer=kernel_init,
+                                      activation="relu"),
+                tf.keras.layers.Dense(units=units, 
+                                      kernel_initializer=kernel_init,
+                                      activation="relu"),
+                tf.keras.layers.Dense(units=units, 
+                                      kernel_initializer=kernel_init,
+                                      activation="relu"),
+                tf.keras.layers.Dense(units=units, 
+                                      kernel_initializer=kernel_init,
+                                      activation="relu"),
+                #tf.keras.layers.Dense(units=units, 
+                #                      kernel_initializer=kernel_init,
+                #                      activation="relu"),
+                tf.keras.layers.Dense(units=1, 
+                                      kernel_initializer=kernel_init,
+                                      activation="sigmoid")
+            ], name="discriminator")
+        
+        tv = tf.reduce_sum([tf.reduce_prod(v.shape) for 
+                            v in self.discriminator.trainable_variables])
+        tf.print(f"Discriminator has {tv} trainable params.")
+
+    #@tf.function
+    def call(self, inputs: tf.Tensor) -> tf.Tensor:
+        return self.discriminator(inputs)
 
 if __name__ == "__main__":
 
@@ -122,25 +161,17 @@ if __name__ == "__main__":
     #kernel_init = "glorot_normal"
     encoder = Encoder(h_dim=h_dim, z_dim=z_dim, kernel_size=kernel_size, kernel_init=kernel_init)
     decoder = Decoder(h_dim=h_dim, z_dim=z_dim, kernel_size=kernel_size, kernel_init=kernel_init)
+    discriminator = Discriminator(units=units, z_dim=z_dim, kernel_init=kernel_init)
 
     z = tf.random.normal(shape=(1, z_dim))
     z_hat = encoder(batch)
+    d_z_hat = discriminator(z_hat)
+    d_z = discriminator(z)
     x_hat = decoder(z_hat)
     
     encoder.encoder.summary()
     decoder.decoder.summary()
+    discriminator.discriminator.summary()
     
-    tf.print(f"{batch.shape} -> {z_hat.shape} -> {x_hat.shape}")
-
-    tf.print("\n"+30*"-"+"AUTOENCODER"+30*"-"+"\n")
-
-    mse_loss = tf.keras.losses.MSE(y_pred=tf.reshape(x_hat, (-1, 28*28)), 
-                               y_true=tf.reshape(batch, (-1, 784)))
-    mse_loss_2 = tf.keras.losses.MSE(y_true=batch, y_pred=x_hat)
-    mse_loss_3 = tf.math.reduce_sum(tf.math.square(batch - x_hat), axis=[1,2,3])
-    mse_loss_4 = tf.reduce_mean(tf.keras.losses.MSE(y_true=batch, y_pred=x_hat), axis=[1,2])
-
-    tf.print(f"From shape {mse_loss.shape} -> mean -> MSE = {tf.reduce_mean(mse_loss)}")
-    tf.print(f"From shape {mse_loss_2.shape} -> mean -> MSE = {tf.reduce_mean(mse_loss_2)}")
-    tf.print(f"From shape {mse_loss_3.shape} -> mean -> MSE = {tf.reduce_mean(mse_loss_3)}")
-    tf.print(f"From shape {mse_loss_4.shape} -> mean -> MSE = {tf.reduce_mean(mse_loss_4)}")
+    print(f"{batch.shape} -> {z_hat.shape} -> {x_hat.shape}")
+    assert batch.shape == x_hat.shape

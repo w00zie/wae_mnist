@@ -39,10 +39,14 @@ def activation(func='relu', **kwargs):
     elif func == 'leaky':
         return LeakyReLU(**kwargs)
 
-def encoder(h_dim=32, z_dim=32, 
+def encoder(config,
             norm_method='batch',
-            kernel_size=[7,7],
             func='relu'):
+
+    h_dim = config["h_dim"]
+    z_dim = config["z_dim"]
+    kernel_size = config["kernel_size"]
+
     inputs = Input(shape=(28, 28, 1))
     x = conv2D(h_dim=h_dim, 
                kernel_size=kernel_size,
@@ -72,10 +76,14 @@ def encoder(h_dim=32, z_dim=32,
     outputs = dense(units=z_dim) (x)
     return tf.keras.Model(inputs=inputs, outputs=outputs, name="Encoder")
 
-def decoder(h_dim=32, z_dim=32, 
+def decoder(config,
             norm_method='batch',
-            kernel_size=[7,7],
             func='relu'):
+
+    h_dim = config["h_dim"]
+    z_dim = config["z_dim"]
+    kernel_size = config["conv_kernel_size"]
+
     inputs = Input(shape=(z_dim))
     x = dense(units=7*7*(8*h_dim)) (inputs)
     x = normalization(norm_method=norm_method) (x)
